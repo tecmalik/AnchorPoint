@@ -580,6 +580,62 @@ export function initializeKeyManagement(config: KeyManagementConfig): void {
 }
 
 /**
+ * Validate AWS KMS / Vault configuration at startup and emit structured
+ * diagnostic log entries.  Never throws — missing config is surfaced as a
+ * warning so the process can still start and serve non-key-management routes.
+ */
+export function validateKmsConfigOnStartup(envConfig: {
+  KEY_MANAGEMENT_BACKEND?: string;
+  AWS_KMS_KEY_ARN?: string;
+  AWS_REGION?: string;
+  VAULT_ADDR?: string;
+  VAULT_TOKEN?: string;
+  VAULT_TRANSIT_PATH?: string;
+}): void {
+  const backend = envConfig.KEY_MANAGEMENT_BACKEND ?? 'aws-kms';
+
+  if (backend === 'aws-kms') {
+    if (!envConfig.AWS_KMS_KEY_ARN) {
+      logger.warn('KMS startup validation: KEY_MANAGEMENT_BACKEND=aws-kms but AWS_KMS_KEY_ARN is not set — key encryption/decryption unavailable', {
+        backend,
+        missingVars: ['AWS_KMS_KEY_ARN'],
+      });
+    } else {
+      const maskedArn = envConfig.AWS_KMS_KEY_ARN.replace(/(?<=.{20}).+(?=.{6})/, '***');
+      logger.info('KMS startup validation: AWS KMS configuration present', {
+        backend,
+        keyArn: maskedArn,
+        region: envConfig.AWS_REGION ?? 'us-east-1 (default)',
+      });
+    }
+    return;
+  }
+
+  if (backend === 'vault') {
+    const missingVars: string[] = [];
+    if (!envConfig.VAULT_ADDR) missingVars.push('VAULT_ADDR');
+    if (!envConfig.VAULT_TOKEN) missingVars.push('VAULT_TOKEN');
+    if (!envConfig.VAULT_TRANSIT_PATH) missingVars.push('VAULT_TRANSIT_PATH');
+
+    if (missingVars.length > 0) {
+      logger.warn('KMS startup validation: KEY_MANAGEMENT_BACKEND=vault but required vars are missing — key encryption/decryption unavailable', {
+        backend,
+        missingVars,
+      });
+    } else {
+      logger.info('KMS startup validation: HashiCorp Vault configuration present', {
+        backend,
+        vaultAddr: envConfig.VAULT_ADDR,
+        transitPath: envConfig.VAULT_TRANSIT_PATH,
+      });
+    }
+    return;
+  }
+
+  logger.warn('KMS startup validation: unrecognised KEY_MANAGEMENT_BACKEND value', { backend });
+}
+
+/**
  * Build key management configuration from environment variables.
  * Returns null when required credentials are missing.
  */
