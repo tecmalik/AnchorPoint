@@ -1,55 +1,82 @@
-# Pull Request: On-Chain Admin Rate Limiting
+# Pull Request: Comprehensive E2E Test Suite and On-Chain Admin Rate Limiting
 
 ## Overview
-This PR implements on-chain rate limiting for all sensitive administrative actions within the AnchorPoint platform. It enforces mandatory cooldown periods between admin operations to ensure that no single action can be spammed in rapid succession during market volatility events or in the event of an admin key compromise.
 
-## Motivation
-Previously, administrative operations (such as adding assets, updating oracle feeds, and modifying configurations) were unrestricted in their frequency. This posed a significant risk during high-volatility events where a compromised or panicking admin could trigger mass-reconfiguration, destabilizing the protocol. Rate limiting serves as a critical defense-in-depth mechanism.
+This PR integrates two major features:
+1. A comprehensive end-to-end test suite that simulates the complete cross-border payment flow, including KYC submission, quote generation, and final settlement (validating SEP-31 alongside existing SEP-10, SEP-12, SEP-24, and SEP-38).
+2. On-chain rate limiting for sensitive administrative actions, enforcing mandatory cooldown periods between admin operations.
 
 ## Design Decision
-Implemented **Option A — Per-action cooldown map**. 
+For rate limiting, we implemented **Option A — Per-action cooldown map**. 
 A global admin cooldown was considered but rejected because it would artificially block concurrent distinct operations (e.g., an admin might need to pause an asset *and* update an oracle feed simultaneously). By isolating the cooldowns per action type, we maintain high operational flexibility while preventing spam.
 
-## Changes
+## What Changed
 
-### 1. Rate Limiting Core
-**File:** `contracts/anchorpoint/src/rate_limit.rs`
+### 1. E2E Test Infrastructure
+**Files:**
+- `backend/src/test/e2e.test.ts` (comprehensive test suite)
+- `backend/src/test/sep31-e2e.test.ts` (SEP-31 focused tests)
+- `backend/demo-e2e.js` (demonstration script)
+- `backend/run-e2e.js` (test runner script)
+
+- Added comprehensive test coverage for SEP-31 cross-border payments.
+- Extended existing E2E tests to include SEP-12 KYC flows.
+- Created focused test suite for SEP-31 payment lifecycle.
+- Added mocking for external services (KYC providers, price feeds, callbacks).
+- Created demonstration and runner scripts for test execution.
+
+### 2. Database Schema Updates
+**File:** `backend/prisma/schema.prisma`
+- Added `Quote` model for handling price quotes in SEP-38.
+- Includes fields for asset exchange rates, expiration, and metadata.
+
+### 3. API Route Configuration
+**File:** `backend/src/index.ts`
+- Added SEP-31 route mounting (`/sep31`).
+- Added SEP-12 route mounting (`/sep12`) under rate limiting.
+- Added auth route mounting (`/auth`).
+
+### 4. Authentication Service Fixes
+**File:** `backend/src/services/auth.service.ts`
+- Fixed TypeScript compilation error in `verifySep10ChallengeTransaction` function.
+- Corrected function declaration syntax.
+
+### 5. Configuration Cleanup
+**File:** `backend/src/config/tracing.ts`
+- Removed unused tracing configuration to resolve compilation issues.
+
+### 6. Test Dependencies and Scripts
+**File:** `backend/package.json`
+- Added `nock` for HTTP request mocking.
+- Added test scripts: `test:e2e` and `test:sep31`.
+- Updated npm scripts for better test execution.
+
+### 7. Documentation Updates
+- Added comprehensive testing section.
+- Added rate-limiting architecture docs.
+
+### 8. Rate Limiting Core
 - Introduced `ActionType` enum (`AddAsset`, `UpdateOracle`, `SetFee`, `RemoveAsset`, `UpdateAdmin`).
 - Implemented `RateLimiter::check_and_update` to validate elapsed time and advance the execution timestamp.
 - Implemented `RateLimiter::set_cooldown` with a `MIN_COOLDOWN` guard to prevent misconfiguration (zero-cooldown).
 - Used `checked_add` and `checked_sub` for all timestamp arithmetic to prevent integer overflow exploits.
 
-### 2. Storage Key Integration
-**File:** `contracts/anchorpoint/src/storage_keys.rs`
-- Added `ActionCooldown(ActionType)` and `ActionCooldownDuration(ActionType)` to the `DataKey` enum. 
-- *Security Note*: Strong typing with the `ActionType` enum inherently prevents action aliasing attacks because Soroban's XDR serialization maps each enum variant to a mathematically distinct storage slot.
+### 9. Storage Key Integration
+- Added `ActionCooldown(ActionType)` and `ActionCooldownDuration(ActionType)` to the `DataKey` enum.
 
-### 3. Admin Function Wrapping
-**File:** `contracts/anchorpoint/src/admin.rs`
+### 10. Admin Function Wrapping
 - Injected `RateLimiter::check_and_update(&env, ActionType::...)` into all sensitive admin state transition functions.
 
-### 4. Comprehensive Testing
-**File:** `contracts/anchorpoint/src/tests/rate_limit_tests.rs`
-- Achieved >90% coverage for rate limiting logic.
-- Included specific test cases for: Happy path, Active Cooldown rejection, Per-action independence, Zero-cooldown guarding, and Timestamp overflow handling.
+## Testing
 
-### 5. Documentation
-**File:** `docs/rate-limiting.md`
-- Added comprehensive documentation detailing the architecture, sequence diagram, operator runbook, and security properties.
+### Prerequisites
+```bash
+docker-compose up -d
+cd backend && npx prisma generate
+```
 
-## Security Properties
-- **Admin Key Compromise:** If an admin key is compromised, the attacker is forced to wait out the defined cooldowns, providing the DAO/Guardians a critical window to intervene.
-- **Timestamp Manipulation:** Relies on Stellar validator consensus timestamps. A drift of ±N seconds is inherently mitigated since the rate limit is designed to restrict rapid-fire spam, not sub-second precision logic.
-
-## Checklist
-- [x] Implemented per-action rate limit state storage.
-- [x] Guarded timestamp arithmetic against overflow/underflow.
-- [x] Prevented misconfiguration of cooldowns (enforced minimum limit).
-- [x] Wrapped `set_fee` and `update_oracle` in admin module.
-- [x] Integrated `anchorpoint` contract into the cargo workspace.
-- [x] Pinned `soroban-sdk` via workspace configurations.
-- [x] Ensured all 5 `anchorpoint` unit tests compile and pass successfully.
-
-## Reviewer Notes
-- **Migration:** When integrating this into an already deployed contract, existing actions will have no `last_called` value in storage. Their first invocation post-upgrade will succeed instantly.
-- Make sure to review the cooldown parameters defined in `docs/rate-limiting.md` to ensure they align with the protocol's governance SLA.
+### Running E2E Tests
+```bash
+cd backend && npm run test:e2e
+cd backend && npm run test:sep31
+```
