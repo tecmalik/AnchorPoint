@@ -121,7 +121,6 @@ pub fn emit_event(env: &Env, event: AnchorEvent) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use soroban_sdk::Val;
     use soroban_sdk::{
         contract, contractimpl, testutils::Address as _, testutils::Events, vec, FromVal, IntoVal,
         Val,
@@ -153,26 +152,21 @@ mod tests {
 
         client.emit_test_event(&event);
 
-        let events = env.events().all();
-        assert_eq!(events.len(), 1);
-
-        let last_event = events.last().unwrap();
-        let expected_topics: soroban_sdk::Vec<Val> = vec![
-            &env,
-            symbol_short!("anchor").into_val(&env),
-            symbol_short!("deposit").into_val(&env),
-        ];
-
-        assert_eq!(last_event.1.len(), expected_topics.len());
-        for i in 0..expected_topics.len() {
-            assert_eq!(
-                last_event.1.get(i).unwrap().get_payload(),
-                expected_topics.get(i).unwrap().get_payload()
-            );
-        }
-
-        let published_event: AnchorEvent = AnchorEvent::from_val(&env, &last_event.2);
-        assert_eq!(published_event, event);
+        assert_eq!(
+            env.events().all(),
+            vec![
+                &env,
+                (
+                    id.clone(),
+                    vec![
+                        &env,
+                        symbol_short!("anchor").into_val(&env),
+                        symbol_short!("deposit").into_val(&env),
+                    ],
+                    event.clone().into_val(&env)
+                )
+            ]
+        );
     }
 
     #[test]
@@ -191,24 +185,20 @@ mod tests {
 
         client.emit_test_event(&event);
 
-        let events = env.events().all();
-        assert_eq!(events.len(), 1);
-
-        let last_event = events.last().unwrap();
-        let expected_topics: soroban_sdk::Vec<Val> = vec![
-            &env,
-            symbol_short!("anchor").into_val(&env),
-            symbol_short!("voted").into_val(&env),
-        ];
-
-        for i in 0..expected_topics.len() {
-            assert_eq!(
-                last_event.1.get(i).unwrap().get_payload(),
-                expected_topics.get(i).unwrap().get_payload()
-            );
-        }
-
-        let published_event: AnchorEvent = AnchorEvent::from_val(&env, &last_event.2);
-        assert_eq!(published_event, event);
+        assert_eq!(
+            env.events().all(),
+            vec![
+                &env,
+                (
+                    id.clone(),
+                    vec![
+                        &env,
+                        symbol_short!("anchor").into_val(&env),
+                        symbol_short!("voted").into_val(&env),
+                    ],
+                    event.clone().into_val(&env)
+                )
+            ]
+        );
     }
 }

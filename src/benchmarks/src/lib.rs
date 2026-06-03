@@ -3,8 +3,8 @@
 #[cfg(test)]
 mod tests {
     use anchorpoint_amm::{AMMClient, AMM};
-    use soroban_sdk::{testutils::Address as _, Address, Env, String};
-    use soroban_token::{TokenContract, TokenContractClient};
+    use soroban_sdk::{testutils::Address as _, token::StellarAssetClient, Address, Env, String};
+    use sep41_token::{TokenContract, TokenContractClient};
 
     // Fails CI if gas increases beyond baseline + ~10% (adjust baseline as needed)
     const MAX_CPU: u64 = 50_000_000;
@@ -16,8 +16,18 @@ mod tests {
         env.mock_all_auths();
 
         let admin = Address::generate(&env);
-        let token_a = Address::generate(&env);
-        let token_b = Address::generate(&env);
+        let user = Address::generate(&env);
+
+        let token_a_contract = env.register_stellar_asset_contract_v2(admin.clone());
+        let token_b_contract = env.register_stellar_asset_contract_v2(admin.clone());
+        let token_a = token_a_contract.address();
+        let token_b = token_b_contract.address();
+
+        let token_a_client = StellarAssetClient::new(&env, &token_a);
+        let token_b_client = StellarAssetClient::new(&env, &token_b);
+
+        token_a_client.mint(&user, &1000);
+        token_b_client.mint(&user, &1000);
 
         let amm_id = env.register(AMM, ());
         let amm_client = AMMClient::new(&env, &amm_id);
@@ -34,7 +44,7 @@ mod tests {
         assert!(cpu_used < MAX_CPU, "AMM initialize CPU regression!");
         assert!(mem_used < MAX_MEM, "AMM initialize MEM regression!");
 
-        let _shares = amm_client.deposit(&Address::generate(&env), &1000, &1000);
+        let _shares = amm_client.deposit(&user, &1000, &1000);
 
         let deposit_cpu_used = env.budget().cpu_instruction_cost() - cpu_used - start_cpu;
         assert!(deposit_cpu_used < MAX_CPU, "AMM deposit CPU regression!");

@@ -75,10 +75,7 @@ impl EventHub {
             .instance()
             .set(&DataKey::RegisteredContracts, &contracts);
 
-        let event_log: Vec<EventLogEntry> = Vec::new(&env);
-        env.storage()
-            .persistent()
-            .set(&DataKey::EventLog, &event_log);
+
 
         env.events()
             .publish((symbol_short!("hub"), symbol_short!("init")), admin);
@@ -146,13 +143,6 @@ impl EventHub {
     /// `true` if the contract is registered, `false` otherwise
     pub fn is_registered(env: Env, contract: Address) -> bool {
         Self::is_registered_source(&env, &contract)
-        let contracts: Map<Address, bool> = env
-            .storage()
-            .instance()
-            .get(&DataKey::RegisteredContracts)
-            .expect("hub not initialized");
-
-        contracts.get(contract).map(|v| v).unwrap_or(false)
     }
 
     /// Capture and re-emit an event from a source contract
@@ -566,7 +556,7 @@ mod tests {
         client.initialize(&admin);
 
         let unregistered = Address::generate(&env);
-        let event_type = SorobanString::from_slice(&env, b"transfer");
+        let event_type = SorobanString::from_str(&env, "transfer");
         let event_data = Bytes::from_slice(&env, b"data");
         client.capture_event(&unregistered, &event_type, &event_data);
     }
@@ -588,7 +578,7 @@ mod tests {
         let source = Address::generate(&env);
         client.register_contract(&admin, &source);
 
-        let event_type = SorobanString::from_slice(&env, b"stake");
+        let event_type = SorobanString::from_str(&env, "stake");
         let event_data = Bytes::from_slice(&env, b"payload");
         client.capture_event(&source, &event_type, &event_data);
 
@@ -631,7 +621,7 @@ mod tests {
         let source = Address::generate(&env);
         client.register_contract(&admin, &source);
 
-        let event_type = SorobanString::from_slice(&env, b"tx");
+        let event_type = SorobanString::from_str(&env, "tx");
         let event_data = Bytes::from_slice(&env, b"d");
 
         client.capture_event(&source, &event_type, &event_data);
@@ -642,26 +632,26 @@ mod tests {
 
         client.capture_event(&source, &event_type, &event_data);
         assert_eq!(client.get_event_count(), 3);
-    }
+     }
 
-    // ── Pagination ────────────────────────────────────────────────────────────
+     // ── Pagination ────────────────────────────────────────────────────────────
 
-    #[test]
-    fn test_get_events_pagination() {
-        let env = Env::default();
-        env.mock_all_auths();
+     #[test]
+     fn test_get_events_pagination() {
+         let env = Env::default();
+         env.mock_all_auths();
 
-        let contract_id = env.register(EventHub, ());
-        let client = EventHubClient::new(&env, &contract_id);
+         let contract_id = env.register(EventHub, ());
+         let client = EventHubClient::new(&env, &contract_id);
 
-        let admin = Address::generate(&env);
-        client.initialize(&admin);
+         let admin = Address::generate(&env);
+         client.initialize(&admin);
 
-        let source = Address::generate(&env);
-        client.register_contract(&admin, &source);
+         let source = Address::generate(&env);
+         client.register_contract(&admin, &source);
 
-        let event_type = SorobanString::from_slice(&env, b"evt");
-        let event_data = Bytes::from_slice(&env, b"data");
+         let event_type = SorobanString::from_str(&env, "evt");
+         let event_data = Bytes::from_slice(&env, b"data");
 
         for _ in 0..5 {
             client.capture_event(&source, &event_type, &event_data);
@@ -766,7 +756,7 @@ mod tests {
         client.register_contract(&admin, &source);
         client.unregister_contract(&admin, &source);
 
-        let event_type = SorobanString::from_slice(&env, b"transfer");
+        let event_type = SorobanString::from_str(&env, "transfer");
         let event_data = Bytes::from_slice(&env, b"data");
         // Should panic — contract was unregistered
         client.capture_event(&source, &event_type, &event_data);

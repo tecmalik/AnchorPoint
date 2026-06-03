@@ -813,7 +813,7 @@ mod tests {
         let env = Env::default();
         env.mock_all_auths();
         let admin = Address::generate(&env);
-        let token_contract = Address::generate(&env);
+        let token_contract = env.register(MockToken, ());
         let id = env.register(GovernanceContract, ());
         let client = GovernanceContractClient::new(&env, &id);
         client.initialize(&admin, &token_contract);
@@ -865,7 +865,8 @@ mod tests {
         let (env, admin, _) = setup();
         let id = env.register(GovernanceContract, ());
         let client = GovernanceContractClient::new(&env, &id);
-        client.initialize(&admin, &Address::generate(&env));
+        let token_contract = env.register(MockToken, ());
+        client.initialize(&admin, &token_contract);
 
         let creator = Address::generate(&env);
         let voter = Address::generate(&env);
@@ -903,7 +904,8 @@ mod tests {
         let (env, admin, _) = setup();
         let id = env.register(GovernanceContract, ());
         let client = GovernanceContractClient::new(&env, &id);
-        client.initialize(&admin, &Address::generate(&env));
+        let token_contract = env.register(MockToken, ());
+        client.initialize(&admin, &token_contract);
 
         let creator = Address::generate(&env);
         let voter = Address::generate(&env);
@@ -926,7 +928,8 @@ mod tests {
         let (env, admin, _) = setup();
         let id = env.register(GovernanceContract, ());
         let client = GovernanceContractClient::new(&env, &id);
-        client.initialize(&admin, &Address::generate(&env));
+        let token_contract = env.register(MockToken, ());
+        client.initialize(&admin, &token_contract);
 
         let creator = Address::generate(&env);
         let voter = Address::generate(&env);
@@ -961,7 +964,8 @@ mod quadratic_voting_tests {
         let admin = Address::generate(&env);
         let id = env.register(GovernanceContract, ());
         let client = GovernanceContractClient::new(&env, &id);
-        client.initialize(&admin, &Address::generate(&env));
+        let token_contract = env.register(MockToken, ());
+        client.initialize(&admin, &token_contract);
         (env, client, admin)
     }
 
@@ -1119,5 +1123,17 @@ mod quadratic_voting_tests {
         let (votes_for, _) = client.get_proposal_votes(&proposal_id);
         assert_eq!(votes_for, 50);
         assert!(!client.quorum_reached(&proposal_id));
+    }
+}
+
+#[cfg(test)]
+#[contract]
+pub struct MockToken;
+
+#[cfg(test)]
+#[contractimpl]
+impl MockToken {
+    pub fn get_past_balance(env: Env, owner: Address, token_id: u64, ledger: u32) -> i128 {
+        1_000_000i128
     }
 }

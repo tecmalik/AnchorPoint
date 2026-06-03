@@ -511,7 +511,7 @@ mod tests {
     extern crate ed25519_dalek;
     extern crate std;
     use super::*;
-    use soroban_sdk::{testutils::Address as _, token::StellarAssetClient};
+    use soroban_sdk::{testutils::Address as _, testutils::Ledger as _, token::StellarAssetClient};
 
     fn setup() -> (Env, BridgeClient<'static>, Address, Address, BytesN<32>) {
         let (env, client, admin, relayer, relayer_key, _) = setup_with_secret();
@@ -683,6 +683,7 @@ mod tests {
             500,
             BridgeOp::Burn,
         );
+        burn_msg.message_hash = BytesN::from_array(&env, &[1u8; 32]);
         let burn_signature = sign_message(&env, &secret, &burn_msg.message_hash.to_array());
         burn_msg.signature = burn_signature;
         client.process_message(&relayer, &burn_msg);
@@ -705,7 +706,7 @@ mod tests {
         env.as_contract(&client.address, || {
             env.storage().instance().set(
                 &DataKey::DestinationMinted(source_chain, token.clone()),
-                &8000,
+                &8000i128,
             )
         });
 
@@ -725,7 +726,7 @@ mod tests {
         env.as_contract(&client.address, || {
             env.storage().instance().set(
                 &DataKey::DestinationMinted(source_chain, token.clone()),
-                &8000,
+                &8000i128,
             )
         });
 
@@ -743,7 +744,7 @@ mod tests {
         env.as_contract(&client.address, || {
             env.storage().instance().set(
                 &DataKey::DestinationMinted(source_chain, token.clone()),
-                &8000,
+                &8000i128,
             )
         });
 
@@ -769,7 +770,7 @@ mod tests {
         env.as_contract(&client.address, || {
             env.storage().instance().set(
                 &DataKey::DestinationMinted(source_chain, token_id.address()),
-                &8000,
+                &8000i128,
             )
         });
 
@@ -809,7 +810,7 @@ mod tests {
         env.as_contract(&client.address, || {
             env.storage().instance().set(
                 &DataKey::DestinationMinted(source_chain, token_id.address()),
-                &5000,
+                &5000i128,
             )
         });
 
@@ -839,6 +840,8 @@ mod tests {
         let source_chain = 1u32;
         let token = Address::generate(&env);
 
+        env.ledger().set_timestamp(100);
+
         assert_eq!(client.get_collateral_update_time(&source_chain, &token), 0);
 
         client.update_source_locked(&admin, &source_chain, &token, &1000);
@@ -857,7 +860,7 @@ mod tests {
         env.as_contract(&client.address, || {
             env.storage().instance().set(
                 &DataKey::DestinationMinted(source_chain, token.clone()),
-                &10000,
+                &10000i128,
             )
         });
 
@@ -881,7 +884,7 @@ mod tests {
         env.as_contract(&client.address, || {
             env.storage().instance().set(
                 &DataKey::DestinationMinted(source_chain, token.clone()),
-                &1000,
+                &1000i128,
             )
         });
 
@@ -905,12 +908,12 @@ mod tests {
         env.as_contract(&client.address, || {
             env.storage()
                 .instance()
-                .set(&DataKey::DestinationMinted(chain1, token.clone()), &500)
+                .set(&DataKey::DestinationMinted(chain1, token.clone()), &500i128)
         });
         env.as_contract(&client.address, || {
             env.storage()
                 .instance()
-                .set(&DataKey::DestinationMinted(chain2, token.clone()), &1000)
+                .set(&DataKey::DestinationMinted(chain2, token.clone()), &1000i128)
         });
 
         assert_eq!(client.get_collateralization_ratio(&chain1, &token), 20000); // 200%

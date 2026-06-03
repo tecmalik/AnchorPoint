@@ -253,6 +253,7 @@ mod tests {
     fn setup() -> (Env, StakingContractClient<'static>, Address, Address) {
         let env = Env::default();
         env.mock_all_auths();
+        env.ledger().set_timestamp(12345);
         let id = env.register(StakingContract, ());
         let client = StakingContractClient::new(&env, &id);
         
@@ -261,6 +262,14 @@ mod tests {
         let token_id = env.register_stellar_asset_contract_v2(token_admin).address();
         
         client.initialize(&admin, &token_id, &1000, &1000); // 10% penalty, 1hr lock
+        
+        // Define tiers matching the test expectations!
+        let test_tiers = vec![
+            &env,
+            LockTier { lock_seconds: 3600, rate_multiplier: 100 },
+        ];
+        client.set_tiers(&test_tiers);
+
         (env, client, admin, token_id)
     }
 
@@ -325,6 +334,9 @@ mod tests {
         // Advance time 4000s (> 3600s lock)
         env.ledger().set_timestamp(env.ledger().timestamp() + 4000);
         
+        // Fund contract with extra reward tokens so it can pay out rewards
+        stellar_asset_client.mint(&client.address, &400);
+
         client.withdraw(&user);
         
         // rewards = (1000 * 1000 * 4000) / 10,000,000 = 400
@@ -396,8 +408,10 @@ mod tests {
     #[test]
     #[should_panic(expected = "no rewards to claim")]
     fn test_claim_no_rewards_panics() {
-        let (env, client, _admin, _token_id) = setup();
+        let (env, client, _admin, token_id) = setup();
         let user = Address::generate(&env);
+        let stellar_asset_client = StellarAssetClient::new(&env, &token_id);
+        stellar_asset_client.mint(&user, &10000);
         client.stake(&user, &1000, &0);
         client.claim_rewards(&user);
     }
