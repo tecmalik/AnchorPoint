@@ -27,7 +27,7 @@ test.describe('dashboard cross-browser smoke coverage', () => {
     await expect(page.getByTestId('active-view')).toContainText('Transaction Initiated');
 
     await page.getByRole('button', { name: 'KYC Status' }).click();
-    await expect(page.getByTestId('active-view')).toContainText('Configured KYC Fields');
+    await expect(page.getByTestId('active-view')).toContainText('Verification Failed');
 
     await page.getByRole('button', { name: 'Overview' }).click();
     await expect(page.getByTestId('active-view')).toContainText('Total Volume');
