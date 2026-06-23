@@ -111,7 +111,7 @@ class MigrationVerifier {
       
       const env = {
         ...process.env,
-        DATABASE_URL: `file:${this.tempDbPath}`,
+        DATABASE_URL: process.env.DATABASE_URL || `file:${this.tempDbPath}`,
       };
 
       // Reset and apply migrations
@@ -137,7 +137,7 @@ class MigrationVerifier {
 
       const env = {
         ...process.env,
-        DATABASE_URL: `file:${this.tempDbPath}`,
+        DATABASE_URL: process.env.DATABASE_URL || `file:${this.tempDbPath}`,
       };
 
       // Check if the database schema matches the Prisma schema
@@ -173,7 +173,7 @@ class MigrationVerifier {
 
       const env = {
         ...process.env,
-        DATABASE_URL: `file:${this.tempDbPath}`,
+        DATABASE_URL: process.env.DATABASE_URL || `file:${this.tempDbPath}`,
       };
 
       // Use Prisma migrate diff to detect destructive changes
@@ -214,7 +214,7 @@ class MigrationVerifier {
 
       const env = {
         ...process.env,
-        DATABASE_URL: `file:${this.tempDbPath}`,
+        DATABASE_URL: process.env.DATABASE_URL || `file:${this.tempDbPath}`,
       };
 
       // Get the list of migrations
