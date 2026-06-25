@@ -24,8 +24,20 @@ import { config } from '../../config/env';
 import { NetworkType } from '../../config/networks';
 import logger from '../../utils/logger';
 
+const CLIENT_DOMAIN_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9\-._]*\.[a-zA-Z]{2,}$/;
+
+function validateClientDomain(domain: string): boolean {
+  const trimmed = domain.trim();
+  if (!trimmed) return false;
+  if (/^https?:\/\//i.test(trimmed)) return false;
+  if (/^javascript:/i.test(trimmed)) return false;
+  if (/\s/.test(trimmed)) return false;
+  return CLIENT_DOMAIN_REGEX.test(trimmed);
+}
+
 interface ChallengeRequest {
   account: string;
+  client_domain?: string;
   signers?: SignerInfo[];
   threshold?: 'low' | 'medium' | 'high';
   multiKey?: boolean;
@@ -61,12 +73,21 @@ export const getChallenge = async (
   res: Response,
   redisService: RedisService
 ): Promise<Response> => {
-  const { account, signers, threshold, multiKey }: ChallengeRequest = req.body;
+  const { account, client_domain, signers, threshold, multiKey }: ChallengeRequest = req.body;
 
   if (!account) {
     return res.status(400).json({
       error: 'account parameter is required'
     });
+  }
+
+  if (client_domain !== undefined) {
+    if (!validateClientDomain(client_domain)) {
+      return res.status(400).json({
+        error: 'invalid_client_domain',
+        message: 'client_domain must be a valid hostname without scheme'
+      });
+    }
   }
 
   try {
