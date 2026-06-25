@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { ArrowDownLeft, ArrowUpRight, ChevronUp, ChevronDown, ChevronsUpDown, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TransactionStatusBadge } from './TransactionStatusBadge';
 import type { TransactionStatus } from './TransactionStatusBadge';
@@ -60,6 +60,12 @@ export const TransactionHistory = () => {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(5);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleSort = useCallback((key: SortKey) => {
     setSortDir((prev) => (sortKey === key ? (prev === 'asc' ? 'desc' : 'asc') : 'asc'));
@@ -198,7 +204,18 @@ export const TransactionHistory = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
-            {paginated.length === 0 ? (
+            {isLoading ? (
+              Array.from({ length: pageSize }).map((_, i) => (
+                <tr key={`skeleton-${i}`} className="transition-colors hover:bg-slate-900/50">
+                  <td className="p-4"><div className="h-4 w-20 bg-slate-800 rounded animate-pulse" /></td>
+                  <td className="p-4"><div className="h-4 w-12 bg-slate-800 rounded animate-pulse" /></td>
+                  <td className="p-4"><div className="h-4 w-16 bg-slate-800 rounded animate-pulse" /></td>
+                  <td className="p-4"><div className="h-6 w-20 bg-slate-800 rounded-full animate-pulse" /></td>
+                  <td className="p-4"><div className="h-4 w-24 bg-slate-800 rounded animate-pulse" /></td>
+                  <td className="p-4"><div className="h-4 w-24 bg-slate-800 rounded animate-pulse" /></td>
+                </tr>
+              ))
+            ) : paginated.length === 0 ? (
               <tr>
                 <td colSpan={6} className="p-8 text-center text-slate-500">
                   No transactions match your filters.
