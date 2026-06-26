@@ -2,14 +2,13 @@ import * as StellarSdk from '@stellar/stellar-sdk';
 import { StellarService } from './stellar.service';
 import { config } from '../config/env';
 
-const mockHorizonServer = {
-  submitTransaction: jest.fn(),
-  loadAccount: jest.fn(),
-};
-
 // Mock Stellar SDK
 jest.mock('@stellar/stellar-sdk', () => {
   const original = jest.requireActual('@stellar/stellar-sdk');
+  const mockHorizonServer = {
+    submitTransaction: jest.fn(),
+    loadAccount: jest.fn(),
+  };
   return {
     ...original,
     Horizon: {
@@ -20,6 +19,7 @@ jest.mock('@stellar/stellar-sdk', () => {
       fromXDR: jest.fn(),
       buildFeeBumpTransaction: jest.fn(),
     },
+    __mockHorizonServer: mockHorizonServer,
     Keypair: {
       fromSecret: jest.fn().mockImplementation(() => ({
         publicKey: () => 'G_FEE_BUMPER',
@@ -50,12 +50,12 @@ describe('StellarService', () => {
       hash: jest.fn().mockReturnValue(Buffer.from('tx-hash')),
     };
     (StellarSdk.TransactionBuilder.fromXDR as jest.Mock).mockReturnValue(mockTx);
-    mockHorizonServer.submitTransaction.mockResolvedValue({ hash: '123', ledger: 456 });
+    (StellarSdk as any).__mockHorizonServer.submitTransaction.mockResolvedValue({ hash: '123', ledger: 456 });
 
     const result = await stellarService.submitTransaction('mock-xdr');
 
     expect(result.hash).toBe('123');
-    expect(mockHorizonServer.submitTransaction).toHaveBeenCalled();
+    expect((StellarSdk as any).__mockHorizonServer.submitTransaction).toHaveBeenCalled();
   });
 
   it('should throw error for non-whitelisted operation', async () => {
@@ -95,7 +95,7 @@ describe('StellarService', () => {
         }
       }
     };
-    mockHorizonServer.submitTransaction.mockRejectedValue(stellarError);
+    (StellarSdk as any).__mockHorizonServer.submitTransaction.mockRejectedValue(stellarError);
 
     await expect(stellarService.submitTransaction('mock-xdr'))
       .rejects.toThrow(/Stellar Error: {"operations":\["op_underfunded"\]}/);
@@ -114,7 +114,7 @@ describe('StellarService', () => {
     };
     (StellarSdk.TransactionBuilder.fromXDR as jest.Mock).mockReturnValue(mockTx);
     (StellarSdk.TransactionBuilder.buildFeeBumpTransaction as jest.Mock).mockReturnValue({ hash: 'bumped' });
-    mockHorizonServer.submitTransaction.mockResolvedValue({ hash: 'bumped', ledger: 789 });
+    (StellarSdk as any).__mockHorizonServer.submitTransaction.mockResolvedValue({ hash: 'bumped', ledger: 789 });
 
     await stellarService.submitTransaction('mock-xdr');
 

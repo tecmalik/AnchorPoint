@@ -10,6 +10,23 @@ import {
   SignedTransactionRequest,
 } from '../types/relayer.types';
 
+jest.mock('@stellar/stellar-sdk', () => {
+  const original = jest.requireActual('@stellar/stellar-sdk');
+  return {
+    ...original,
+    Keypair: {
+      ...original.Keypair,
+      random: jest.fn().mockReturnValue({
+        secret: () => 'SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+        publicKey: () => 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      }),
+      fromSecret: jest.fn().mockImplementation(() => ({
+        publicKey: () => 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      })),
+    },
+  };
+});
+
 describe('RelayerService', () => {
   let relayerService: RelayerService;
   const mockRelayerConfig = {
