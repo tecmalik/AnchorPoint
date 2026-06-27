@@ -28,7 +28,8 @@
     "migrate:rollback": "ts-node scripts/generate-rollback.ts",
     "migrate:status": "prisma migrate status",
     "migrate:validate-env": "node scripts/validate-migration-env.js",
-    "migrate:bootstrap": "bash scripts/bootstrap-db.sh"
+    "migrate:bootstrap": "bash scripts/bootstrap-db.sh",
+    "clean": "rm -rf logs coverage && find . -name '*.db-journal' -delete && find . -name '*.sqlite-journal' -delete"
   },
   "dependencies": {
     "@aws-sdk/client-kms": "^3.500.0",
